@@ -5,6 +5,8 @@ from loguru import logger
 from src import audio, llm
 from src.constants import APPLICATION_WIDTH, OFF_IMAGE, ON_IMAGE
 
+history = "AI: Thank you for calling Dooley Service Pro, this is Sarah your virtual assistant how may I help you today!"
+
 
 def get_text_area(text: str, size: tuple) -> sg.Text:
     """
@@ -85,26 +87,31 @@ while True:
     elif event in ("a", "A"):  # send audio to OpenAI Whisper model
         logger.debug("Analyzing audio...")
         analyzed_text_label.update("Start analyzing...")
-        WINDOW.perform_long_operation(llm.transcribe_audio, "-WHISPER COMPLETED-")
+        WINDOW.perform_long_operation(llm.transcribe_audio_deepgram, "-WHISPER COMPLETED-")
 
     elif event == "-WHISPER COMPLETED-":
         audio_transcript = values["-WHISPER COMPLETED-"]
         analyzed_text_label.update(audio_transcript)
 
         # Generate quick answer:
-        quick_chat_gpt_answer.update("Chatgpt is working...")
-        WINDOW.perform_long_operation(
-            lambda: llm.generate_answer(audio_transcript, short_answer=True, temperature=0),
-            "-CHAT_GPT SHORT ANSWER-",
-        )
+        # quick_chat_gpt_answer.update("Chatgpt is working...")
+        # WINDOW.perform_long_operation(
+        #     lambda: llm.generate_answer(audio_transcript, short_answer=True, temperature=0, history=history),
+        #     "-CHAT_GPT SHORT ANSWER-",
+        # )
 
         # Generate full answer:
         full_chat_gpt_answer.update("Chatgpt is working...")
         WINDOW.perform_long_operation(
-            lambda: llm.generate_answer(audio_transcript, short_answer=False, temperature=0.7),
-            "-CHAT_GPT LONG ANSWER-",
+            lambda: llm.generate_answer(audio_transcript, short_answer=False, temperature=0.7, history=history),
+            "-CHAT_GPT LONG ANSWER-"
         )
-    elif event == "-CHAT_GPT SHORT ANSWER-":
-        quick_chat_gpt_answer.update(values["-CHAT_GPT SHORT ANSWER-"])
+        history += f"\nUSER: {values['-WHISPER COMPLETED-']}"
+
+    # elif event == '-CHAT_GPT SHORT ANSWER-':
+    #     history += f'\nAI: {values["-CHAT_GPT SHORT ANSWER-"]}'
+    #     quick_chat_gpt_answer.update(values["-CHAT_GPT SHORT ANSWER-"])
+
     elif event == "-CHAT_GPT LONG ANSWER-":
+        history += f'\nAI: {values["-CHAT_GPT LONG ANSWER-"]}'
         full_chat_gpt_answer.update(values["-CHAT_GPT LONG ANSWER-"])

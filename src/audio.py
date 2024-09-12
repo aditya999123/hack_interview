@@ -1,12 +1,9 @@
-"""Audio utilities."""
 import numpy as np
-import soundcard as sc
+import sounddevice as sd
 import soundfile as sf
 from loguru import logger
 
 from src.constants import OUTPUT_FILE_NAME, RECORD_SEC, SAMPLE_RATE
-
-SPEAKER_ID = str(sc.default_speaker().name)
 
 
 def record_batch(record_sec: int = RECORD_SEC) -> np.ndarray:
@@ -18,20 +15,26 @@ def record_batch(record_sec: int = RECORD_SEC) -> np.ndarray:
 
     Returns:
         np.ndarray: The recorded audio sample.
-
-    Example:
-        ```python
-        audio_sample = record_batch(5)
-        print(audio_sample)
-        ```
     """
-    logger.debug("Recording for {record_sec} second(s)...")
-    with sc.get_microphone(
-        id=SPEAKER_ID,
-        include_loopback=True,
-    ).recorder(samplerate=SAMPLE_RATE) as mic:
-        audio_sample = mic.record(numframes=SAMPLE_RATE * record_sec)
-    return audio_sample
+    logger.debug(f"Recording for {record_sec} second(s)...")
+
+    # Get the default input device (should work with your MacBook Air Microphone)
+    device_info = sd.query_devices(kind='input')
+    channels = device_info['max_input_channels']
+    
+    if channels == 0:
+        logger.error("No available input channels. Please check your microphone settings.")
+        return np.array([])
+
+    try:
+        # Record using sounddevice
+        audio_sample = sd.rec(int(record_sec * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=channels)
+        sd.wait()  # Wait until the recording is finished
+        logger.debug("Recording complete.")
+        return audio_sample
+    except Exception as e:
+        logger.error(f"Recording failed: {e}")
+        return np.array([])  # Return an empty array on failure
 
 
 def save_audio_file(audio_data: np.ndarray, output_file_name: str = OUTPUT_FILE_NAME) -> None:
